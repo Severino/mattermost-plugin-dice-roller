@@ -40,7 +40,7 @@ func (p *Plugin) OnActivate() error {
 		DisplayName:      "Dice roller ⚄",
 		AutoComplete:     true,
 		AutoCompleteDesc: "Roll one or several dice. ⚁ ⚄ Try /roll help for a list of possibilities.",
-		AutoCompleteHint: "20 d6+4 3d4 [sum]",
+		AutoCompleteHint: "100",
 	})
 }
 
