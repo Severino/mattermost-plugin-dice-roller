@@ -34,7 +34,6 @@ func TestBadInputs(t *testing.T) {
 
 	testCases := []string{
 		"/lolzies d20",
-		"/roll ",
 		"/roll d0",
 		"/roll hahaha",
 		"/roll 6d",
@@ -50,6 +49,27 @@ func TestBadInputs(t *testing.T) {
 		assert.NotNil(t, err)
 		assert.Nil(t, response)
 	}
+}
+
+func TestDefaultRequest(t *testing.T) {
+	p, api := initTestPlugin()
+	var post *model.Post
+	api.On("CreatePost", mock.AnythingOfType("*model.Post")).Return(nil, nil).Run(func(args mock.Arguments) {
+		post = args.Get(0).(*model.Post)
+	})
+	assert.Nil(t, p.OnActivate())
+
+	command := &model.CommandArgs{
+		Command: "/roll",
+		UserId:  "userid",
+	}
+	response, err := p.ExecuteCommand(&plugin.Context{}, command)
+	testLabel := "Testing /roll"
+	assert.Nil(t, err, testLabel)
+	assert.NotNil(t, response, testLabel)
+	assert.NotNil(t, post, testLabel)
+	assert.NotNil(t, post.Message, testLabel)
+	assert.True(t, strings.HasPrefix(post.Message, "**User** rolls *100* = "), testLabel)
 }
 
 func TestGoodInputs(t *testing.T) {

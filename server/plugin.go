@@ -103,6 +103,10 @@ func (p *Plugin) generateDicePost(query, userID, channelID, rootID string) (*mod
 		displayName = user.Username
 	}
 
+	if strings.TrimSpace(query) == "" {
+		query = "100"
+	}
+
 	text := fmt.Sprintf("**%s** rolls *%s* = ", displayName, query)
 	sum := 0
 	rollRequests := strings.Fields(query)
