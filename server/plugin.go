@@ -13,7 +13,8 @@ import (
 )
 
 const (
-	trigger string = "roll"
+	trigger       string = "roll"
+	closeModifier string = "AndClose"
 )
 
 // Plugin implements the interface expected by the Mattermost server to communicate between the server and plugin processes.
@@ -34,7 +35,7 @@ type Plugin struct {
 func (p *Plugin) OnActivate() error {
 	rand.Seed(time.Now().UnixNano())
 
-	return p.API.RegisterCommand(&model.Command{
+	rollError := p.API.RegisterCommand(&model.Command{
 		Trigger:          trigger,
 		Description:      "Roll one or more dice",
 		DisplayName:      "Dice roller ⚄",
@@ -42,6 +43,23 @@ func (p *Plugin) OnActivate() error {
 		AutoCompleteDesc: "Roll one or several dice. ⚁ ⚄ Try /roll help for a list of possibilities.",
 		AutoCompleteHint: "100",
 	})
+	if rollError != nil {
+		return rollError
+	}
+
+	rollAndCloseError := p.API.RegisterCommand(&model.Command{
+		Trigger:          trigger + closeModifier,
+		Description:      "Roll one or more dice and close current round",
+		DisplayName:      "Dice roller ⚄",
+		AutoComplete:     true,
+		AutoCompleteDesc: "Roll and close the round afterwards.",
+		AutoCompleteHint: "100",
+	})
+	if rollAndCloseError != nil {
+		return rollAndCloseError
+	}
+
+	return nil
 }
 
 func (p *Plugin) GetHelpMessage() *model.CommandResponse {
@@ -73,6 +91,12 @@ func (p *Plugin) ExecuteCommand(_ *plugin.Context, args *model.CommandArgs) (*mo
 	if strings.HasPrefix(args.Command, cmd) {
 		query := strings.TrimSpace((strings.Replace(args.Command, cmd, "", 1)))
 
+		closeRound := false
+		if strings.HasPrefix(args.Command, cmd+closeModifier) {
+			query = strings.TrimSpace((strings.Replace(args.Command, cmd+closeModifier, "", 1)))
+			closeRound = true
+		}
+
 		if query == "help" || query == "--help" || query == "h" || query == "-h" {
 			return p.GetHelpMessage(), nil
 		}
@@ -86,10 +110,43 @@ func (p *Plugin) ExecuteCommand(_ *plugin.Context, args *model.CommandArgs) (*mo
 			return nil, createPostError
 		}
 
+		if closeRound {
+			post, generateClosePostError := p.generateClosePost(args.UserId, args.ChannelId, args.RootId)
+			if generateClosePostError != nil {
+				return nil, generateClosePostError
+			}
+			_, createClosePostError := p.API.CreatePost(post)
+			if createClosePostError != nil {
+				return nil, createClosePostError
+			}
+		}
+
 		return &model.CommandResponse{}, nil
 	}
 
 	return nil, appError("Expected trigger "+cmd+" but got "+args.Command, nil)
+}
+
+func (p *Plugin) generateClosePost(userID, channelID, rootID string) (*model.Post, *model.AppError) {
+	// Get the user to display their name
+	user, userErr := p.API.GetUser(userID)
+	if userErr != nil {
+		return nil, userErr
+	}
+
+	displayName := user.Nickname
+	if displayName == "" {
+		displayName = user.Username
+	}
+
+	text := fmt.Sprintf("**Rien ne va plus!!!!**\n_%s closes the round._", displayName)
+
+	return &model.Post{
+		UserId:    p.diceBotID,
+		ChannelId: channelID,
+		RootId:    rootID,
+		Message:   text,
+	}, nil
 }
 
 func (p *Plugin) generateDicePost(query, userID, channelID, rootID string) (*model.Post, *model.AppError) {

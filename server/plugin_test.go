@@ -107,6 +107,54 @@ func TestGoodInputs(t *testing.T) {
 	}
 }
 
+func TestRollAndClose(t *testing.T) {
+	p, api := initTestPlugin()
+	var post *model.Post
+	var closePost *model.Post
+	api.On("CreatePost", mock.AnythingOfType("*model.Post")).Return(nil, nil).Run(func(args mock.Arguments) {
+		eventPost := args.Get(0).(*model.Post)
+
+		if strings.Contains(eventPost.Message, "rolls") {
+			post = eventPost
+		} else {
+			closePost = eventPost
+		}
+	})
+	assert.Nil(t, p.OnActivate())
+
+	closingText := "**Rien ne va plus!!!!**\n_User closes the round._"
+
+	testCases := []struct {
+		inputDiceRequest string
+		expectedText     string
+	}{
+		{inputDiceRequest: "3d1 sum", expectedText: "**User** rolls *3d1 sum* = **3**\n- 3d1: 1 1 1"},
+		{inputDiceRequest: "5d1", expectedText: "**User** rolls *5d1* = **5**\n- 5d1: 1 1 1 1 1"},
+		{inputDiceRequest: "1", expectedText: "**User** rolls *1* = **1**"},
+		{inputDiceRequest: "+42", expectedText: "**User** rolls *+42* = **42**"},
+		{inputDiceRequest: "4d1+3", expectedText: "**User** rolls *4d1+3* = **16**\n- 4d1+3: 4 4 4 4"},
+		{inputDiceRequest: "4d1 +3", expectedText: "**User** rolls *4d1 +3* = **7**\n- 4d1: 1 1 1 1\n- +3"},
+		{inputDiceRequest: "4d1 2d1 +42", expectedText: "**User** rolls *4d1 2d1 +42* = **48**\n- 4d1: 1 1 1 1\n- 2d1: 1 1\n- +42"},
+	}
+	for _, testCase := range testCases {
+		command := &model.CommandArgs{
+			Command: "/rollAndClose " + testCase.inputDiceRequest,
+			UserId:  "userid",
+		}
+		response, err := p.ExecuteCommand(&plugin.Context{}, command)
+		testLabel := "Testing " + testCase.inputDiceRequest
+		assert.Nil(t, err, testLabel)
+		assert.NotNil(t, response, testLabel)
+		assert.NotNil(t, post, testLabel)
+		assert.NotNil(t, post.Message, testLabel)
+		assert.Equal(t, testCase.expectedText, strings.TrimSpace(post.Message), testLabel)
+
+		assert.NotNil(t, closePost, testLabel)
+		assert.NotNil(t, closePost.Message, testLabel)
+		assert.Equal(t, closingText, strings.TrimSpace(closePost.Message), testLabel)
+	}
+}
+
 func initTestPlugin() (*Plugin, *plugintest.API) {
 	api := &plugintest.API{}
 	api.On("RegisterCommand", mock.Anything).Return(nil)
