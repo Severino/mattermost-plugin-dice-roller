@@ -14,7 +14,7 @@ import (
 
 const (
 	trigger       string = "roll"
-	close         string = "close"
+	closeCommand  string = "close"
 	closeModifier string = "AndClose"
 )
 
@@ -49,7 +49,7 @@ func (p *Plugin) OnActivate() error {
 	}
 
 	closeError := p.API.RegisterCommand(&model.Command{
-		Trigger:          close,
+		Trigger:          closeCommand,
 		Description:      "Close current round",
 		DisplayName:      "Dice roller ⚄",
 		AutoComplete:     true,
@@ -127,7 +127,7 @@ func (p *Plugin) ExecuteCommand(_ *plugin.Context, args *model.CommandArgs) (*mo
 		validTrigger = true
 	}
 
-	if strings.HasPrefix(args.Command, "/"+close) {
+	if strings.HasPrefix(args.Command, "/"+closeCommand) {
 		closeRound = true
 		validTrigger = true
 	}

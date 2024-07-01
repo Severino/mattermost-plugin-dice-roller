@@ -179,7 +179,6 @@ func TestClose(t *testing.T) {
 	assert.NotNil(t, closePost, testLabel)
 	assert.NotNil(t, closePost.Message, testLabel)
 	assert.Equal(t, closingText, strings.TrimSpace(closePost.Message), testLabel)
-
 }
 
 func initTestPlugin() (*Plugin, *plugintest.API) {
