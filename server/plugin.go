@@ -14,6 +14,7 @@ import (
 
 const (
 	trigger       string = "roll"
+	close         string = "close"
 	closeModifier string = "AndClose"
 )
 
@@ -45,6 +46,18 @@ func (p *Plugin) OnActivate() error {
 	})
 	if rollError != nil {
 		return rollError
+	}
+
+	closeError := p.API.RegisterCommand(&model.Command{
+		Trigger:          close,
+		Description:      "Close current round",
+		DisplayName:      "Dice roller ⚄",
+		AutoComplete:     true,
+		AutoCompleteDesc: "Close the current round.",
+		AutoCompleteHint: "Close",
+	})
+	if closeError != nil {
+		return closeError
 	}
 
 	rollAndCloseError := p.API.RegisterCommand(&model.Command{
@@ -87,13 +100,14 @@ func (p *Plugin) ExecuteCommand(_ *plugin.Context, args *model.CommandArgs) (*mo
 		return nil, appError("Cannot access the plugin API.", nil)
 	}
 
-	cmd := "/" + trigger
-	if strings.HasPrefix(args.Command, cmd) {
-		query := strings.TrimSpace((strings.Replace(args.Command, cmd, "", 1)))
+	validTrigger := false
+	closeRound := false
+	rollCommand := "/" + trigger
+	if strings.HasPrefix(args.Command, rollCommand) {
+		query := strings.TrimSpace((strings.Replace(args.Command, rollCommand, "", 1)))
 
-		closeRound := false
-		if strings.HasPrefix(args.Command, cmd+closeModifier) {
-			query = strings.TrimSpace((strings.Replace(args.Command, cmd+closeModifier, "", 1)))
+		if strings.HasPrefix(args.Command, rollCommand+closeModifier) {
+			query = strings.TrimSpace((strings.Replace(args.Command, rollCommand+closeModifier, "", 1)))
 			closeRound = true
 		}
 
@@ -110,21 +124,30 @@ func (p *Plugin) ExecuteCommand(_ *plugin.Context, args *model.CommandArgs) (*mo
 			return nil, createPostError
 		}
 
-		if closeRound {
-			post, generateClosePostError := p.generateClosePost(args.UserId, args.ChannelId, args.RootId)
-			if generateClosePostError != nil {
-				return nil, generateClosePostError
-			}
-			_, createClosePostError := p.API.CreatePost(post)
-			if createClosePostError != nil {
-				return nil, createClosePostError
-			}
-		}
+		validTrigger = true
+	}
 
+	if strings.HasPrefix(args.Command, "/"+close) {
+		closeRound = true
+		validTrigger = true
+	}
+
+	if closeRound {
+		post, generateClosePostError := p.generateClosePost(args.UserId, args.ChannelId, args.RootId)
+		if generateClosePostError != nil {
+			return nil, generateClosePostError
+		}
+		_, createClosePostError := p.API.CreatePost(post)
+		if createClosePostError != nil {
+			return nil, createClosePostError
+		}
+	}
+
+	if validTrigger {
 		return &model.CommandResponse{}, nil
 	}
 
-	return nil, appError("Expected trigger "+cmd+" but got "+args.Command, nil)
+	return nil, appError("Expected a trigger but got "+args.Command, nil)
 }
 
 func (p *Plugin) generateClosePost(userID, channelID, rootID string) (*model.Post, *model.AppError) {

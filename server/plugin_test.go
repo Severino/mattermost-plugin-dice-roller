@@ -155,6 +155,33 @@ func TestRollAndClose(t *testing.T) {
 	}
 }
 
+func TestClose(t *testing.T) {
+	p, api := initTestPlugin()
+	var closePost *model.Post
+	api.On("CreatePost", mock.AnythingOfType("*model.Post")).Return(nil, nil).Run(func(args mock.Arguments) {
+		eventPost := args.Get(0).(*model.Post)
+		closePost = eventPost
+	})
+	assert.Nil(t, p.OnActivate())
+
+	closingText := "**Rien ne va plus!!!!**\n_User closes the round._"
+
+	command := &model.CommandArgs{
+		Command: "/close ",
+		UserId:  "userid",
+	}
+
+	response, err := p.ExecuteCommand(&plugin.Context{}, command)
+	testLabel := "Testing /close"
+	assert.Nil(t, err, testLabel)
+	assert.NotNil(t, response, testLabel)
+
+	assert.NotNil(t, closePost, testLabel)
+	assert.NotNil(t, closePost.Message, testLabel)
+	assert.Equal(t, closingText, strings.TrimSpace(closePost.Message), testLabel)
+
+}
+
 func initTestPlugin() (*Plugin, *plugintest.API) {
 	api := &plugintest.API{}
 	api.On("RegisterCommand", mock.Anything).Return(nil)
