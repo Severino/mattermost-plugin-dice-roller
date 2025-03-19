@@ -3,7 +3,6 @@ package main
 import (
 	"crypto/rand"
 	"fmt"
-	"io"
 	"math/big"
 	"regexp"
 	"strconv"
@@ -77,7 +76,7 @@ func rollNumericDice(code string) (*diceRolls, error) {
 		}
 		if number > maxDice {
 			// Complain about insanity.
-			return nil, fmt.Errorf(fmt.Sprintf("'%s' is too many dice; maximum is %d.", numberStr, maxDice))
+			return nil, fmt.Errorf("'%s' is too many dice; maximum is %d", numberStr, maxDice)
 		}
 	}
 
@@ -124,11 +123,10 @@ func readSumModifier(code string) (*diceRolls, error) {
 }
 
 func rollDie(sides int) int {
-	var reader io.Reader = rand.Reader
-	var bigSides *big.Int = big.NewInt(int64(sides))
-	var result, error = rand.Int(reader, bigSides) //nolint:gosec
-	if error != nil {
-		panic(error)
+	var bigSides = big.NewInt(int64(sides))
+	var bigRand, err = rand.Int(rand.Reader, bigSides) //nolint:gosec
+	if err != nil {
+		panic(err)
 	}
-	return int(result.Int64()) + 1
+	return int(bigRand.Int64()) + 1
 }
