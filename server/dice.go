@@ -1,8 +1,10 @@
 package main
 
 import (
+	"crypto/rand"
 	"fmt"
-	"math/rand"
+	"io"
+	"math/big"
 	"regexp"
 	"strconv"
 )
@@ -122,5 +124,11 @@ func readSumModifier(code string) (*diceRolls, error) {
 }
 
 func rollDie(sides int) int {
-	return 1 + rand.Intn(sides) //nolint:gosec
+	var reader io.Reader = rand.Reader
+	var bigSides *big.Int = big.NewInt(int64(sides))
+	var result, error = rand.Int(reader, bigSides) //nolint:gosec
+	if error != nil {
+		panic(error)
+	}
+	return int(result.Int64()) + 1
 }
